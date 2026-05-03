@@ -1,0 +1,4 @@
+moviepy<2.0.0
+playwright
+customtkinter
+playwright-stealth

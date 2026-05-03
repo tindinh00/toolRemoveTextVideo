@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Build artifacts
+build/
+dist/
+*.spec.bak
+
+# Runtime/output
+temp_chunks/
+processed_chunks/
+output/
+
+# Logs
+*.log
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
