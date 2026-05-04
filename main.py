@@ -5,67 +5,149 @@ import threading
 import subprocess
 import customtkinter as ctk
 from tkinter import filedialog
-from video_processor import split_video, merge_videos
-from automation import process_all_chunks
+from workspace_ui_flow import process_all_chunks
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("Auto Video Watermark Remover")
-        self.geometry("600x550")
+        self.title("Công Cụ Xóa Chữ & Làm Nét Video")
+        self.geometry("860x760")
+        self.minsize(820, 700)
         
         self.input_file = None
         self.processing = False
+        self.default_prompt = "Remove all text and watermarks from this video, and enhance the video sharpness and clarity while keeping the original content unchanged."
+        self.configure(fg_color="#0b1220")
         
-        # UI Elements
-        self.lbl_title = ctk.CTkLabel(self, text="Auto Video Watermark Remover", font=("Arial", 20, "bold"))
-        self.lbl_title.pack(pady=20)
-        
-        self.btn_select = ctk.CTkButton(self, text="Chọn Video", command=self.select_video)
-        self.btn_select.pack(pady=10)
-        
-        self.lbl_selected = ctk.CTkLabel(self, text="Chưa chọn file nào", text_color="gray")
-        self.lbl_selected.pack(pady=5)
-        
-        self.btn_start = ctk.CTkButton(self, text="Bắt đầu xử lý", command=self.start_processing, state="disabled", fg_color="green", hover_color="darkgreen")
-        self.btn_start.pack(pady=10)
+        # Main container
+        self.main = ctk.CTkFrame(self, corner_radius=14, fg_color="#111827")
+        self.main.pack(fill="both", expand=True, padx=24, pady=20)
 
-        self.download_mode = ctk.StringVar(value="free_5s")
-        self.mode_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.mode_frame.pack(pady=(0, 10))
-        self.rb_free = ctk.CTkRadioButton(
-            self.mode_frame,
-            text="Free 5s (cắt + ghép)",
-            variable=self.download_mode,
-            value="free_5s"
+        # Header
+        self.lbl_title = ctk.CTkLabel(
+            self.main,
+            text="Xóa Chữ & Làm Nét Video",
+            font=("SF Pro Display", 28, "bold"),
+            text_color="#f8fafc"
         )
-        self.rb_free.pack(side="left", padx=10)
-        self.rb_full = ctk.CTkRadioButton(
-            self.mode_frame,
-            text="Download full video",
-            variable=self.download_mode,
-            value="full"
+        self.lbl_title.pack(anchor="w", padx=20, pady=(18, 2))
+        self.lbl_subtitle = ctk.CTkLabel(
+            self.main,
+            text="Quy trình: đăng nhập -> OTP/đăng ký -> upload -> prompt -> gửi -> chờ hoàn tất -> tải về",
+            font=("SF Pro Text", 13),
+            text_color="#94a3b8"
         )
-        self.rb_full.pack(side="left", padx=10)
-        
-        self.lbl_progress = ctk.CTkLabel(self, text="Tiến độ: 0%")
-        self.lbl_progress.pack(pady=(10, 0))
-        
-        self.progress = ctk.CTkProgressBar(self, width=400)
-        self.progress.pack(pady=5)
-        self.progress.set(0)
-        
-        self.btn_open_folder = ctk.CTkButton(
-            self, text="📂 Mở thư mục Output", 
-            command=self.open_output_folder, 
+        self.lbl_subtitle.pack(anchor="w", padx=20, pady=(0, 14))
+
+        # Input card
+        self.input_card = ctk.CTkFrame(self.main, corner_radius=12, fg_color="#0f172a")
+        self.input_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        self.lbl_video = ctk.CTkLabel(
+            self.input_card,
+            text="Video Nguồn",
+            font=("SF Pro Text", 14, "bold"),
+            text_color="#e2e8f0"
+        )
+        self.lbl_video.pack(anchor="w", padx=14, pady=(12, 8))
+
+        self.btn_select = ctk.CTkButton(
+            self.input_card,
+            text="Chọn Video",
+            command=self.select_video,
+            width=140,
+            fg_color="#2563eb",
+            hover_color="#1d4ed8"
+        )
+        self.btn_select.pack(anchor="w", padx=14, pady=(0, 10))
+
+        self.lbl_selected = ctk.CTkLabel(
+            self.input_card,
+            text="Chưa chọn file nào",
+            text_color="#94a3b8",
+            font=("SF Pro Text", 13)
+        )
+        self.lbl_selected.pack(anchor="w", padx=14, pady=(0, 12))
+
+        # Prompt card
+        self.prompt_card = ctk.CTkFrame(self.main, corner_radius=12, fg_color="#0f172a")
+        self.prompt_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        self.lbl_prompt = ctk.CTkLabel(
+            self.prompt_card,
+            text="Prompt (tuỳ chỉnh)",
+            font=("SF Pro Text", 14, "bold"),
+            text_color="#e2e8f0"
+        )
+        self.lbl_prompt.pack(anchor="w", padx=14, pady=(12, 8))
+
+        self.prompt_box = ctk.CTkTextbox(
+            self.prompt_card,
+            height=90,
+            corner_radius=10,
+            border_width=1,
+            border_color="#334155",
+            fg_color="#0b1220",
+            text_color="#e2e8f0"
+        )
+        self.prompt_box.pack(fill="x", padx=14, pady=(0, 12))
+        self.prompt_box.insert("1.0", self.default_prompt)
+
+        # Actions
+        self.actions = ctk.CTkFrame(self.main, fg_color="transparent")
+        self.actions.pack(fill="x", padx=20, pady=(0, 12))
+
+        self.btn_start = ctk.CTkButton(
+            self.actions,
+            text="Bắt Đầu Xử Lý",
+            command=self.start_processing,
             state="disabled",
-            fg_color="#2980b9", hover_color="#1a5276"
+            width=160,
+            fg_color="#16a34a",
+            hover_color="#15803d"
         )
-        self.btn_open_folder.pack(pady=(10, 0))
-        
-        self.log_box = ctk.CTkTextbox(self, width=500, height=200)
-        self.log_box.pack(pady=10)
+        self.btn_start.pack(side="left")
+
+        self.btn_open_folder = ctk.CTkButton(
+            self.actions,
+            text="Mở Thư Mục Output",
+            command=self.open_output_folder,
+            state="disabled",
+            width=170,
+            fg_color="#0ea5e9",
+            hover_color="#0284c7"
+        )
+        self.btn_open_folder.pack(side="left", padx=(10, 0))
+
+        # Progress
+        self.progress_card = ctk.CTkFrame(self.main, corner_radius=12, fg_color="#0f172a")
+        self.progress_card.pack(fill="x", padx=20, pady=(0, 12))
+        self.lbl_progress = ctk.CTkLabel(self.progress_card, text="Tiến độ: 0%", text_color="#e2e8f0")
+        self.lbl_progress.pack(anchor="w", padx=14, pady=(12, 8))
+        self.progress = ctk.CTkProgressBar(self.progress_card, height=12)
+        self.progress.pack(fill="x", padx=14, pady=(0, 12))
+        self.progress.set(0)
+
+        # Logs
+        self.logs_card = ctk.CTkFrame(self.main, corner_radius=12, fg_color="#0f172a")
+        self.logs_card.pack(fill="both", expand=True, padx=20, pady=(0, 18))
+        self.lbl_logs = ctk.CTkLabel(
+            self.logs_card,
+            text="Nhật Ký Xử Lý",
+            font=("SF Pro Text", 14, "bold"),
+            text_color="#e2e8f0"
+        )
+        self.lbl_logs.pack(anchor="w", padx=14, pady=(12, 8))
+        self.log_box = ctk.CTkTextbox(
+            self.logs_card,
+            corner_radius=10,
+            border_width=1,
+            border_color="#334155",
+            fg_color="#0b1220",
+            text_color="#cbd5e1"
+        )
+        self.log_box.pack(fill="both", expand=True, padx=14, pady=(0, 12))
         self.log_box.configure(state="disabled")
         
         self.output_dir_path = None
@@ -80,7 +162,10 @@ class App(ctk.CTk):
     
     def open_output_folder(self):
         if self.output_dir_path and os.path.exists(self.output_dir_path):
-            subprocess.Popen(f'explorer "{self.output_dir_path}"')
+            if os.name == "nt":
+                subprocess.Popen(f'explorer "{self.output_dir_path}"')
+            else:
+                subprocess.Popen(["open", self.output_dir_path])
         
     def select_video(self):
         filename = filedialog.askopenfilename(
@@ -89,7 +174,7 @@ class App(ctk.CTk):
         )
         if filename:
             self.input_file = filename
-            self.lbl_selected.configure(text=os.path.basename(filename), text_color="white")
+            self.lbl_selected.configure(text=os.path.basename(filename), text_color="#e2e8f0")
             self.btn_start.configure(state="normal")
             self.log(f"Đã chọn: {filename}")
 
@@ -98,17 +183,11 @@ class App(ctk.CTk):
             return
             
         self.processing = True
-        mode = self.download_mode.get()
         self.btn_select.configure(state="disabled")
         self.btn_start.configure(state="disabled")
-        self.rb_free.configure(state="disabled")
-        self.rb_full.configure(state="disabled")
         self.progress.set(0)
         self.lbl_progress.configure(text="Tiến độ: 0%")
-        if mode == "full":
-            self.log("Bắt đầu xử lý video (chế độ full video)...")
-        else:
-            self.log("Bắt đầu xử lý video (chế độ free 5s)...")
+        self.log("Bắt đầu quy trình: đăng nhập -> OTP/đăng ký -> upload -> prompt -> gửi -> chờ hoàn tất -> tải về...")
         
         # Start processing in a separate thread to keep UI responsive
         threading.Thread(target=self.run_workflow, daemon=True).start()
@@ -117,30 +196,23 @@ class App(ctk.CTk):
         try:
             # 1. Setup directories
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            temp_dir = os.path.join(base_dir, "temp_chunks")
             processed_dir = os.path.join(base_dir, "processed_chunks")
             output_dir = os.path.join(base_dir, "output")
             
-            for d in [temp_dir, processed_dir, output_dir]:
+            for d in [processed_dir, output_dir]:
                 if os.path.exists(d):
                     shutil.rmtree(d, ignore_errors=True)
                 os.makedirs(d)
                 
-            mode = self.download_mode.get()
-            if mode == "full":
-                # Full mode: không cắt 5s, upload trực tiếp file gốc
-                self.log("Chế độ full video: bỏ qua bước cắt 5s.")
-                chunk_paths = [self.input_file]
-            else:
-                # Free mode: cắt video thành các đoạn 5s
-                self.log("Đang cắt video thành các đoạn 5s...")
-                chunk_paths = split_video(self.input_file, temp_dir, chunk_duration=5)
+            self.log("Đã khởi tạo workflow.")
+            chunk_paths = [self.input_file]
+            prompt_text = self.prompt_box.get("1.0", "end-1c").strip()
 
             total_chunks = len(chunk_paths)
-            self.log(f"Tổng số phần cần xử lý: {total_chunks}.")
+            self.log(f"Số mục cần xử lý: {total_chunks}.")
             
             if total_chunks == 0:
-                self.log("Lỗi: Không có đoạn video nào được tạo ra.")
+                self.log("Lỗi: không tìm thấy video đầu vào.")
                 return
 
             # 3. Process chunks with Playwright
@@ -159,7 +231,7 @@ class App(ctk.CTk):
                         processed_dir, 
                         log_callback=self.log,
                         progress_callback=progress_callback,
-                        download_mode=mode
+                        prompt_text=prompt_text
                     )
                 )
             except Exception as e:
@@ -169,14 +241,8 @@ class App(ctk.CTk):
             loop.close()
             
             if processed_paths:
-                if mode == "full":
-                    output_file = os.path.join(output_dir, f"watermark_removed_{os.path.basename(self.input_file)}")
-                    shutil.copy2(processed_paths[0], output_file)
-                else:
-                    # 4. Merge videos
-                    self.log("Đang nối các đoạn video đã xử lý...")
-                    output_file = os.path.join(output_dir, f"watermark_removed_{os.path.basename(self.input_file)}")
-                    merge_videos(processed_paths, output_file)
+                output_file = os.path.join(output_dir, f"watermark_removed_{os.path.basename(self.input_file)}")
+                shutil.copy2(processed_paths[0], output_file)
                 self.log(f"Hoàn tất! Video đã lưu tại: {output_file}")
                 
                 # Lưu đường dẫn và bật nút mở thư mục
@@ -192,7 +258,6 @@ class App(ctk.CTk):
                 
             # 5. Cleanup
             self.log("Đang dọn dẹp file tạm...")
-            shutil.rmtree(temp_dir, ignore_errors=True)
             shutil.rmtree(processed_dir, ignore_errors=True)
             self.log("Đã dọn dẹp xong.")
             
@@ -202,8 +267,6 @@ class App(ctk.CTk):
             self.processing = False
             self.btn_select.configure(state="normal")
             self.btn_start.configure(state="normal")
-            self.rb_free.configure(state="normal")
-            self.rb_full.configure(state="normal")
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")

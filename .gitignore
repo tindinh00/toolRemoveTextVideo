@@ -8,6 +8,8 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+VideoWatermarkRemover/
+*.exe
 *.spec.bak
 
 # Runtime/output
@@ -23,3 +25,6 @@ output/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local environment
+.venv/

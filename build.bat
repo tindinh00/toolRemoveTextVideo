@@ -12,8 +12,7 @@ echo [2/3] Dang dong goi thanh file .exe...
 pyinstaller --noconfirm --onedir --windowed ^
     --name "VideoWatermarkRemover" ^
     --add-data "auth.py;." ^
-    --add-data "automation.py;." ^
-    --add-data "video_processor.py;." ^
+    --add-data "workspace_ui_flow.py;." ^
     --hidden-import "customtkinter" ^
     --hidden-import "playwright" ^
     --hidden-import "playwright.async_api" ^
